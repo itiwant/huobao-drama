@@ -2024,7 +2024,8 @@ function onVideoTaskRowClick(sb) {
 // 旁白角色识别：按内容语言的关键词匹配（提取产物中的旁白角色不参与画面生成）
 function isNarratorCharacter(char) {
   const text = `${char?.name || ''} ${char?.role || ''}`.toLowerCase()
-  return ['旁白', '画外音', 'narrator', 'ナレーター', 'ナレーション', '내레이션', '해설'].some(k => text.includes(k))
+  return ['旁白', '画外音', 'narrator', 'ナレーター', 'ナレーション', '내레이션', '해설',
+    'người dẫn chuyện', 'dẫn chuyện', 'lời dẫn', 'thuyết minh'].some(k => text.includes(k))
 }
 
 const visualChars = computed(() => chars.value.filter(c => !isNarratorCharacter(c)))
