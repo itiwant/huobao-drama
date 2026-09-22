@@ -205,8 +205,10 @@ import { Clock, CircleHelp } from 'lucide-vue-next'
 import { dramaAPI, stylePresetAPI } from '~/composables/useApi'
 import BaseSelect from '~/components/BaseSelect.vue'
 import { startTour, autoTour } from '~/composables/useTour'
+import { useStylePresetLabel } from '~/composables/useStylePresetLabel'
 
 const { t, locale } = useI18n()
+const { styleName, styleDescription, styleNameByValue } = useStylePresetLabel()
 
 const dramas = ref([])
 const loading = ref(false)
@@ -223,8 +225,8 @@ const dramaToDelete = ref(null)
 const deletingDrama = ref(false)
 const form = ref({ title: '', style: '', aspect_ratio: '16:9' })
 const stylePresets = ref([])
-const styleSelectOptions = computed(() => stylePresets.value.map(p => ({ label: p.name, value: p.value })))
-const selectedStyleDesc = computed(() => stylePresets.value.find(p => p.value === form.value.style)?.description || '')
+const styleSelectOptions = computed(() => stylePresets.value.map(p => ({ label: styleName(p), value: p.value })))
+const selectedStyleDesc = computed(() => styleDescription(stylePresets.value.find(p => p.value === form.value.style)))
 // 常量数组 label 渲染时求值（语言切换即时生效），value 为逻辑值
 const aspectRatioOptions = computed(() => ([
   { label: t('index.ratio.landscape'), value: '16:9' },
@@ -264,7 +266,8 @@ async function setDramaStatus(d, status) {
 }
 
 function styleLabel(key) {
-  return stylePresets.value.find(p => p.value === key)?.name || key || ''
+  const preset = stylePresets.value.find(p => p.value === key)
+  return styleNameByValue(key, preset?.name)
 }
 
 // 封面：单色灰阶 + 首字符（状态色只以小圆点出现，封面保持中性）
@@ -499,6 +502,7 @@ onMounted(() => setTimeout(() => autoTour('index', INDEX_TOUR, t), 600))
   font-weight: 500;
   letter-spacing: 0.02em;
   font-family: var(--font-mono);
+  white-space: nowrap;
 }
 .cover-badge {
   display: inline-flex;

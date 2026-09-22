@@ -202,15 +202,15 @@
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/><path d="M13 18l6-6-6-6"/></svg>
                 {{ t('episode.script.skipRewrite') }}
               </button>
-              <button v-if="scriptContent" class="btn btn-sm" @click="doRewrite" :disabled="rn">
-                <Loader2 v-if="rn && rt === 'script_rewriter'" :size="11" class="animate-spin" />
+              <button v-if="scriptContent" class="btn btn-sm" @click="doRewrite" :disabled="rewriting">
+                <Loader2 v-if="rewriting" :size="11" class="animate-spin" />
                 <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
                 {{ t('episode.script.rewriteAgain') }}
               </button>
             </div>
           </div>
 
-          <div v-if="!scriptContent && !rn" class="step-empty">
+          <div v-if="!scriptContent && !rewriting" class="step-empty">
             <div class="empty-visual">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
                 <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>
@@ -229,9 +229,9 @@
               </button>
             </div>
           </div>
-          <div v-else-if="rn && rt === 'script_rewriter'" class="step-loading">
+          <div v-else-if="rewriting" class="step-loading">
             <Loader2 :size="24" class="animate-spin" style="color:var(--accent)" />
-            <div class="loading-text">{{ t('episode.script.rewriting') }}</div>
+            <div class="loading-text">{{ rewriteHint }}</div>
           </div>
           <textarea v-else class="fill-textarea" v-model="localScript" :placeholder="t('episode.script.scriptPlaceholder')" />
         </div>
@@ -488,8 +488,8 @@
               <span class="tag mono">{{ t('episode.sb.segmentStat', { n: sbs.length, dur: totalDuration }) }}</span>
               <span class="tag mono" :title="t('episode.vid.aspectRatio')">{{ dramaAspectRatio }}</span>
               <div class="ml-auto flex gap-1">
-                <button class="btn btn-sm" :disabled="rn" @click="doBreakdown">
-                  <Loader2 v-if="rt === 'storyboard_breaker'" :size="11" class="animate-spin" />
+                <button class="btn btn-sm" :disabled="breakingDown" @click="doBreakdown">
+                  <Loader2 v-if="breakingDown" :size="11" class="animate-spin" />
                   <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                   {{ sbs.length ? t('episode.sb.rebreak') : t('episode.sb.startBreak') }}
                 </button>
@@ -518,8 +518,8 @@
               <div class="empty-title">{{ t('episode.sb.emptyTitle') }}</div>
               <div class="empty-desc">{{ t('episode.sb.emptyDesc') }}</div>
               <div class="locked-config-banner">{{ t('episode.vid.lockedModel') }}{{ effectiveVideoModelLabel }}</div>
-              <button class="btn btn-primary" :disabled="rn" @click="doBreakdown">
-                <Loader2 v-if="rt === 'storyboard_breaker'" :size="13" class="animate-spin" />
+              <button class="btn btn-primary" :disabled="breakingDown" @click="doBreakdown">
+                <Loader2 v-if="breakingDown" :size="13" class="animate-spin" />
                 <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                 {{ t('episode.sb.startBreak') }}
               </button>
@@ -1436,7 +1436,6 @@ import {
 } from 'lucide-vue-next'
 import { api, dramaAPI, episodeAPI, storyboardAPI, characterAPI, sceneAPI, propAPI, taskAPI, mergeAPI, aiConfigAPI, uploadAPI } from '~/composables/useApi'
 import { startTour, autoTour } from '~/composables/useTour'
-import { useAgent } from '~/composables/useAgent'
 import { toastError, mapError, MODERATION_RE } from '~/composables/useToast'
 import LocaleSwitcher from '~/components/LocaleSwitcher.vue'
 
@@ -1462,7 +1461,8 @@ const storedPanel = (() => {
 // 首个 refresh 时若已恢复面板位置，跳过按内容自动重置 scriptStep
 let panelRestored = !!storedPanel
 const panel = ref(['production', 'export'].includes(storedPanel?.panel) ? storedPanel.panel : 'script')
-const { running: rn, runningType: rt, run: runAgent } = useAgent()
+// 两个长耗时 Agent 任务（剧本改写 / 分镜拆解）均已改为后端异步 + 前端轮询，
+// 不再走 useAgent 的全局同步锁
 
 const localRaw = ref(''), localScript = ref('')
 const rawContent = computed(() => episode.value?.content || '')
@@ -2037,11 +2037,15 @@ const RESOLUTION_TIERS = {
   volcengine: ['480p', '720p'],
   minimax: ['720p', '1080p'],
   aliyun: ['480p', '720p', '1080p'],
+  // kie 各模型档位不一（Kling std/pro/4K、Seedance 480p/720p、Grok 480p/720p），
+  // 取并集：适配器会按所选模型再收敛到它支持的取值
+  kie: ['480p', '720p', '1080p'],
 }
 const RESOLUTION_DISPLAY = {
   volcengine: { '480p': '480p', '720p': '720p', '1080p': '720p' },
   minimax: { '480p': '768P', '720p': '768P', '1080p': '2K' },
   aliyun: { '480p': '480P', '720p': '720P', '1080p': '1080P' },
+  kie: { '480p': '480p', '720p': '720p', '1080p': '1080p' },
 }
 const resolutionProvider = computed(() => RESOLUTION_TIERS[selectedVideoConfig.value?.provider] ? selectedVideoConfig.value.provider : 'volcengine')
 const resolutionOptions = computed(() => RESOLUTION_TIERS[resolutionProvider.value].map(key => ({
@@ -2641,9 +2645,63 @@ async function refresh() {
 
 function saveRaw() { episodeAPI.update(epId.value, { content: localRaw.value }); episode.value.content = localRaw.value }
 function saveScr() { episodeAPI.update(epId.value, { script_content: localScript.value }); episode.value.script_content = localScript.value }
-// 发给 Agent 的 message 是功能性提示词而非 UI 文案：产出语言由后端全局「内容语言」指令控制，
-// 这里保持中文不随界面语言变化
-function doRewrite() { saveRaw(); runAgent('script_rewriter', '请读取剧本并改写为格式化剧本，然后保存', dramaId, epId.value, refresh, chatModelOverride(), chatConfigId()) }
+// 剧本改写：后端异步执行（长剧本可达数分钟，同步等待会踩两侧超时），前端轮询状态直到完成
+const rewriting = ref(false)
+// 后端每一步上报的工具名，用于提示当前进度
+const rewriteStage = ref('')
+const rewriteHint = computed(() => {
+  if (!rewriteStage.value) return t('episode.script.rewriting')
+  if (rewriteStage.value.includes('read_episode_script')) return t('episode.script.stageReading')
+  if (rewriteStage.value.includes('save_script')) return t('episode.script.stageSaving')
+  return t('episode.script.rewriting')
+})
+function doRewrite() {
+  if (rewriting.value || !epId.value) return
+  saveRaw()
+  episodeAPI.rewriteScript(epId.value, chatModelOverride(), chatConfigId())
+    .then((res) => {
+      if (res?.already_running) rewriteStage.value = ''
+      rewriting.value = true
+      pollRewriteStatus()
+    })
+    .catch(e => toastError(e))
+}
+
+function pollRewriteStatus(attempts = 480) {
+  const tick = async (left) => {
+    try {
+      const st = await episodeAPI.rewriteStatus(epId.value)
+      if (st && st.status !== 'running') {
+        rewriting.value = false
+        rewriteStage.value = ''
+        await refresh()
+        if (st.status === 'done') {
+          toast.success(t('episode.script.rewriteDone', { n: st.word_count || 0 }))
+        } else {
+          toastError(st.error, { fallback: 'episode.script.rewriteFailed' })
+        }
+        return
+      }
+      if (st?.last_tool) rewriteStage.value = st.last_tool
+    } catch { /* 网络抖动继续轮询 */ }
+    if (left > 0) setTimeout(() => tick(left - 1), 2500)
+    else { rewriting.value = false; rewriteStage.value = '' }
+  }
+  setTimeout(() => tick(attempts), 2500)
+}
+
+/** 页面加载后恢复仍在运行的改写任务状态（刷新页面不丢进度展示） */
+async function syncRewriteStatus() {
+  if (!epId.value) return
+  try {
+    const st = await episodeAPI.rewriteStatus(epId.value)
+    if (st?.status === 'running' && !rewriting.value) {
+      rewriting.value = true
+      rewriteStage.value = st.last_tool || ''
+      pollRewriteStatus()
+    }
+  } catch { /* 静默 */ }
+}
 function skipRewrite() {
   const raw = (localRaw.value || rawContent.value || '').trim()
   if (!raw) {
@@ -2726,7 +2784,7 @@ async function syncExtractStatus() {
 
 // ─── 批量视频提示词：后端异步逐分镜生成，前端轮询进度 ──────────
 const videoPromptBatch = ref({ running: false, total: 0, completed: 0 })
-// 单个视频提示词生成：按分镜 ID 跟踪，允许不同分镜并行生成（不走全局 rn 锁）
+// 单个视频提示词生成：按分镜 ID 跟踪，允许不同分镜并行生成（不走全局运行锁）
 const videoPromptGeneratingIds = ref([])
 // 视频制作页多选快捷操作：全选 / 仅选未生成视频（勾选集与批量视频共用 selectedVideoSbIds）
 function toggleSelectAllVideos() {
@@ -2783,28 +2841,61 @@ function pollVideoPromptBatch(attempts = 240) {
   }
   setTimeout(() => tick(attempts), 2500)
 }
+// 分镜拆解：后端异步执行（整集分镜一次产出，长耗时），前端轮询状态直到完成
+// 提示词文案随内容语言由后端拼装（角色/场景/道具清单由后端现查，避免前端列表过期）
+const breakingDown = ref(false)
+const breakdownStage = ref('')
+const breakdownHint = computed(() => {
+  if (!breakdownStage.value) return t('episode.sb.breaking')
+  if (breakdownStage.value.includes('read_storyboard_context')) return t('episode.sb.stageReading')
+  if (breakdownStage.value.includes('save_storyboards')) return t('episode.sb.stageSaving')
+  return t('episode.sb.breaking')
+})
 function doBreakdown() {
-  const charList = chars.value.length
-    ? chars.value.map(c => `${c.name}(ID:${c.id})`).join('、')
-    : '（当前集还没有角色）'
-  const sceneList = scenes.value.length
-    ? scenes.value.map(s => `${s.location} · ${s.time || '未设时间'}(ID:${s.id})`).join('、')
-    : '（当前集还没有场景）'
-  const propList = propItems.value.length
-    ? propItems.value.map(p => `${p.name}(ID:${p.id})`).join('、')
-    : '（当前集还没有道具）'
-  runAgent('storyboard_breaker', `请基于当前集剧本拆分分镜，并为每个分镜段落同时生成 video_prompt（视频生成提示词）。
-本次视频模型：${effectiveVideoModelLabel.value}，请按该模型的特性与时长限制生成 video_prompt。
+  if (breakingDown.value || !epId.value) return
+  episodeAPI.breakdownStoryboards(epId.value, chatModelOverride(), chatConfigId(), effectiveVideoModelLabel.value)
+    .then(() => {
+      breakingDown.value = true
+      breakdownStage.value = ''
+      pollBreakdownStatus()
+    })
+    .catch(e => toastError(e))
+}
 
-当前集已有角色：${charList}
-当前集已有场景：${sceneList}
-当前集已有道具：${propList}
+function pollBreakdownStatus(attempts = 480) {
+  const tick = async (left) => {
+    try {
+      const st = await episodeAPI.breakdownStatus(epId.value)
+      if (st && st.status !== 'running') {
+        breakingDown.value = false
+        breakdownStage.value = ''
+        if (st.status === 'done') {
+          toast.success(t('episode.sb.breakDone', { n: st.storyboard_count || 0 }))
+          await onBreakdownDone()
+        } else {
+          toastError(st.error, { fallback: 'episode.sb.breakFailed' })
+        }
+        return
+      }
+      if (st?.last_tool) breakdownStage.value = st.last_tool
+    } catch { /* 网络抖动继续轮询 */ }
+    if (left > 0) setTimeout(() => tick(left - 1), 2500)
+    else { breakingDown.value = false; breakdownStage.value = '' }
+  }
+  setTimeout(() => tick(attempts), 2500)
+}
 
-绑定要求：
-- 每个镜头必须根据剧本内容，从上述当前集已有角色中选出出场的角色绑定 character_ids（ID 必须来自上述列表；有角色出场就必须绑定，不要遗漏）
-- 每个镜头尽量匹配上述已有场景填写 scene_id（ID 必须来自上述列表），不要凭空创造新场景
-- 每个镜头出现关键道具（被使用、交接、特写或在画面中明显可见）时，从上述当前集已有道具中绑定 prop_ids（ID 必须来自上述列表）；没有道具出现可传空数组
-- 只有纯环境空镜头才可以不绑定角色`, dramaId, epId.value, onBreakdownDone, chatModelOverride(), chatConfigId())
+/** 页面加载后恢复仍在运行的拆解任务状态（刷新页面不丢进度展示） */
+async function syncBreakdownStatus() {
+  if (!epId.value) return
+  try {
+    const st = await episodeAPI.breakdownStatus(epId.value)
+    if (st?.status === 'running' && !breakingDown.value) {
+      breakingDown.value = true
+      breakdownStage.value = st.last_tool || ''
+      pollBreakdownStatus()
+    }
+  } catch { /* 静默 */ }
 }
 
 /** 拆分完成后刷新并自动补齐缺失的视频提示词（兜住 Agent 漏写/截断） */
@@ -3365,7 +3456,7 @@ async function loadConfigs() {
   } catch (e) { console.error('Failed to load AI configs', e) }
 }
 
-onMounted(async () => { await refresh(); loadConfigs(); syncExtractStatus() })
+onMounted(async () => { await refresh(); loadConfigs(); syncExtractStatus(); syncRewriteStatus(); syncBreakdownStatus() })
 
 // ===== 应用内引导（工作台）：沿左侧进度栏走 6 步流水线 =====
 const EPISODE_TOUR = [
@@ -3483,6 +3574,8 @@ onMounted(() => setTimeout(() => autoTour('episode', EPISODE_TOUR, t), 900))
   color: var(--accent-text);
   font-size: 9px;
   font-weight: 700;
+  /* 高度固定 18px，文字折行会溢出框外；标签文案随语言变长（如 "Episode 12"） */
+  white-space: nowrap;
 }
 
 .studio-meta-row {

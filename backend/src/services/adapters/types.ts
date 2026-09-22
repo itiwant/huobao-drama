@@ -7,10 +7,11 @@ export interface ImageProviderAdapter {
 
   /**
    * 构建图片生成请求
+   * 允许返回 Promise：部分厂商（如 kie）需要先上传参考图拿到公网 URL 才能定稿请求体。
    * @param config AI 配置 { baseUrl, apiKey, model }
    * @param record 图片生成记录
    */
-  buildGenerateRequest(config: AIConfig, record: ImageGenerationRecord): ProviderRequest
+  buildGenerateRequest(config: AIConfig, record: ImageGenerationRecord): ProviderRequest | Promise<ProviderRequest>
 
   /**
    * 解析生成响应，判断是同步还是异步
@@ -48,7 +49,8 @@ export interface ImageProviderAdapter {
 export interface VideoProviderAdapter {
   provider: string
 
-  buildGenerateRequest(config: AIConfig, record: VideoGenerationRecord): ProviderRequest
+  /** 同 ImageProviderAdapter.buildGenerateRequest：允许异步（kie 需先上传参考素材） */
+  buildGenerateRequest(config: AIConfig, record: VideoGenerationRecord): ProviderRequest | Promise<ProviderRequest>
 
   parseGenerateResponse(result: any): VideoGenResponse
 

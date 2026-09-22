@@ -9,7 +9,7 @@
       </button>
       <div class="head-info">
         <h1 class="page-title">{{ drama.title }}</h1>
-        <span v-if="drama.style" class="tag tag-accent">{{ drama.style }}</span>
+        <span v-if="drama.style" class="tag tag-accent">{{ styleNameByValue(drama.style) }}</span>
         <div class="page-meta">
           <span class="meta-item">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -567,8 +567,10 @@ import { toastError } from '~/composables/useToast'
 import { useI18n } from 'vue-i18n'
 import { dramaAPI, episodeAPI, characterAPI, sceneAPI, propAPI, uploadAPI } from '~/composables/useApi'
 import BaseSelect from '~/components/BaseSelect.vue'
+import { useStylePresetLabel } from '~/composables/useStylePresetLabel'
 
 const { t, locale } = useI18n()
+const { styleNameByValue } = useStylePresetLabel()
 
 const route = useRoute()
 const drama = ref(null)

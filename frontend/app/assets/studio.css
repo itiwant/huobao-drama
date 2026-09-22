@@ -340,6 +340,9 @@ select.input { appearance: auto; cursor: pointer; padding-right: 14px; }
   background: var(--overlay-track);
   color: var(--text-2);
   font: 550 11px var(--font-body);
+  /* 短标签不应折行：flex 容器默认 nowrap 只作用于子项，文字本身仍会换行，
+     导致「Phong cách」这类两词标签撑成两行、pill 高度翻倍。 */
+  white-space: nowrap;
 }
 .tag-accent { background: var(--accent-bg); color: var(--accent-text); }
 .tag-success { background: var(--success-bg); color: var(--tag-success-text); }

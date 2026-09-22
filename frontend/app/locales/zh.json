@@ -440,6 +440,65 @@
     "skillDelete": {
       "title": "删除 Skill",
       "message": "确定删除 Skill「{id}」？删除后对应 Agent 将回退到内置默认提示词。"
+    },
+    "stylePresetNames": {
+      "3d": {
+        "name": "3D 漫剧",
+        "description": "游戏引擎级 3D 渲染，半写实角色，当前短剧主流的 3D 漫剧质感"
+      },
+      "anime": {
+        "name": "日漫赛璐璐",
+        "description": "日式赛璐璐动画风格"
+      },
+      "ghibli": {
+        "name": "吉卜力手绘",
+        "description": "吉卜力手绘治愈风"
+      },
+      "watercolor": {
+        "name": "水彩绘本",
+        "description": "水彩插画质感"
+      },
+      "comic": {
+        "name": "美式漫画",
+        "description": "美式漫画粗线条风格"
+      },
+      "guofeng": {
+        "name": "国风 2.5D",
+        "description": "国风动画/仙侠剧质感，2.5D 半写实"
+      },
+      "webtoon": {
+        "name": "韩系网漫",
+        "description": "韩国条漫/网漫精致上色风"
+      },
+      "noir": {
+        "name": "黑白漫画",
+        "description": "黑白漫/ Noir 高对比墨水风"
+      }
+    },
+    "providerPresets": {
+      "gemini": {
+        "label": "Gemini 官方"
+      },
+      "openai": {
+        "label": "OpenAI 官方"
+      },
+      "volcengine": {
+        "label": "Seedance 2.0 官方"
+      },
+      "minimax": {
+        "label": "MiniMax H3 官方"
+      },
+      "aliyun": {
+        "label": "阿里云百炼 Wan 3.0"
+      },
+      "kie": {
+        "label": "Kie.ai"
+      }
+    },
+    "huobaoService": {
+      "text": "火宝文本服务",
+      "image": "火宝图片服务",
+      "video": "火宝视频服务"
     }
   },
   "episode": {
@@ -497,6 +556,10 @@
       "emptyDesc": "你可以先用 AI 把原始内容整理成格式化剧本，也可以跳过这一步，直接进入资产制作。",
       "startRewrite": "开始改写",
       "rewriting": "正在改写剧本...",
+      "stageReading": "正在读取原稿...",
+      "stageSaving": "正在保存改写结果...",
+      "rewriteDone": "改写完成，共 {n} 字",
+      "rewriteFailed": "改写失败，请重试",
       "scriptPlaceholder": "格式化剧本内容...",
       "rawRequired": "请先填写原始内容",
       "skipDone": "已跳过 AI 改写，当前将直接使用原始内容"
@@ -671,6 +734,10 @@
       "videoPromptCopy": "根据当前分镜的画面描述（含台词/旁白）与氛围生成",
       "videoPromptPlaceholder": "用 {'@'}角色名 / {'@'}场景名 引用参考素材，按 3 秒一段换行描述画面运动与镜头；也可点 AI 生成由提示词 Agent 自动创作…",
       "breaking": "正在拆分分镜...",
+      "stageReading": "正在读取剧本与资产...",
+      "stageSaving": "正在保存分镜...",
+      "breakDone": "分镜拆分完成，共 {n} 个分镜",
+      "breakFailed": "分镜拆分失败，请重试",
       "emptyTitle": "开始拆分分镜",
       "emptyDesc": "根据剧本、角色和场景拆分镜头，生成分镜描述和绑定信息。",
       "hasVideo": "已生成视频",

@@ -63,7 +63,10 @@ onMounted(() => {
   border: 1px solid var(--border) !important;
   border-radius: var(--radius-lg) !important;
   box-shadow: var(--shadow-elevated) !important;
-  max-width: 340px;
+  /* driver.css 自带 max-width:300px 且同名特异性，必须 !important 才能生效；
+     300px 对越南语等拉丁文字太窄（同义文本比中文长约 30%），放宽到 360px */
+  max-width: 360px !important;
+  min-width: 280px !important;
 }
 .huobao-tour-popover .driver-popover-title {
   color: var(--text-0) !important;

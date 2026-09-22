@@ -440,6 +440,65 @@
     "skillDelete": {
       "title": "Skill を削除",
       "message": "Skill「{id}」を削除しますか？対応する Agent は組み込みのデフォルトプロンプトに戻ります。"
+    },
+    "stylePresetNames": {
+      "3d": {
+        "name": "3Dアニメ",
+        "description": "ゲームエンジン級の3Dレンダリング、セミリアルなキャラクター、現在主流の3Dアニメ調"
+      },
+      "anime": {
+        "name": "日本のセル画アニメ",
+        "description": "日本式セルシェーディングアニメ風格"
+      },
+      "ghibli": {
+        "name": "ジブリ手描き",
+        "description": "ジブリ風の手描き癒し系"
+      },
+      "watercolor": {
+        "name": "水彩絵本",
+        "description": "水彩イラストの質感"
+      },
+      "comic": {
+        "name": "アメコミ",
+        "description": "アメコミの太線風格"
+      },
+      "guofeng": {
+        "name": "中国風2.5D",
+        "description": "中国風アニメ／仙侠ドラマ調、2.5Dセミリアル"
+      },
+      "webtoon": {
+        "name": "韓国ウェブトゥーン",
+        "description": "韓国ウェブトゥーンの繊細な彩色風格"
+      },
+      "noir": {
+        "name": "白黒漫画",
+        "description": "白黒漫画／ノワール高コントラスト墨調"
+      }
+    },
+    "providerPresets": {
+      "gemini": {
+        "label": "Gemini 公式"
+      },
+      "openai": {
+        "label": "OpenAI 公式"
+      },
+      "volcengine": {
+        "label": "Seedance 2.0 公式"
+      },
+      "minimax": {
+        "label": "MiniMax H3 公式"
+      },
+      "aliyun": {
+        "label": "Alibaba Bailian Wan 3.0"
+      },
+      "kie": {
+        "label": "Kie.ai"
+      }
+    },
+    "huobaoService": {
+      "text": "Huobao テキストサービス",
+      "image": "Huobao 画像サービス",
+      "video": "Huobao 動画サービス"
     }
   },
   "episode": {
@@ -497,6 +556,10 @@
       "emptyDesc": "AI で原文を書式付き脚本に整理するか、このステップをスキップして資産制作に進めます。",
       "startRewrite": "リライトを開始",
       "rewriting": "脚本をリライト中...",
+      "stageReading": "原文を読み込み中...",
+      "stageSaving": "リライト結果を保存中...",
+      "rewriteDone": "リライト完了、{n} 文字",
+      "rewriteFailed": "リライトに失敗しました。もう一度お試しください",
       "scriptPlaceholder": "書式付き脚本の内容...",
       "rawRequired": "先に原文を入力してください",
       "skipDone": "AI リライトをスキップしました。原文をそのまま使用します"
@@ -671,6 +734,10 @@
       "videoPromptCopy": "この分镜の画面説明（セリフ/ナレーションを含む）と雰囲気から生成",
       "videoPromptPlaceholder": "{'@'}キャラクター名 / {'@'}シーン名 で参照素材を指定し、3 秒ごとに改行して画面の動きとカメラを記述。AI で生成してプロンプト Agent に任せることもできます…",
       "breaking": "分镜を分解中...",
+      "stageReading": "脚本と素材を読み込み中...",
+      "stageSaving": "分镜を保存中...",
+      "breakDone": "分镜の分解が完了しました（{n} カット）",
+      "breakFailed": "分镜の分解に失敗しました。もう一度お試しください",
       "emptyTitle": "分镜分解を開始",
       "emptyDesc": "脚本、キャラクター、シーンをもとにショットへ分解し、分镜説明と紐付け情報を生成します。",
       "hasVideo": "動画生成済み",

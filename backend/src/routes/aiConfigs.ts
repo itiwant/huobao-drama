@@ -107,6 +107,16 @@ function buildProbe(serviceType: string, provider: string, baseUrl: string, mode
     }
   }
 
+  if (p === 'kie') {
+    // 查余额接口最轻：不创建任务、不计费，只验证 key 与端点连通性
+    return {
+      method: 'GET',
+      url: joinProviderUrl(baseUrl, '/api/v1', '/chat/credit'),
+      headers: bearerHeaders(apiKey),
+      body: undefined,
+    }
+  }
+
   return {
     method: 'GET',
     url: joinProviderUrl(baseUrl, '', m ? `/${m}` : '/'),

@@ -5,6 +5,8 @@ import { success, notFound, badRequest, now } from '../utils/response.js'
 import { toSnakeCaseArray, toSnakeCase } from '../utils/transform.js'
 import { getActiveConfigId } from '../services/ai.js'
 import { EXTRACT_TARGETS, getExtractionStatus, startExtraction, type ExtractTarget } from '../services/extraction.js'
+import { getScriptRewriteStatus, startScriptRewrite } from '../services/script-rewrite.js'
+import { getStoryboardBreakdownStatus, startStoryboardBreakdown } from '../services/storyboard-breakdown.js'
 import { getVideoPromptBatchStatus, startVideoPromptBatch } from '../services/video-prompts.js'
 
 const app = new Hono()
@@ -141,6 +143,44 @@ app.post('/:id/extract', async (c) => {
 app.get('/:id/extract-status', async (c) => {
   const id = Number(c.req.param('id'))
   return success(c, getExtractionStatus(id))
+})
+
+// POST /episodes/:id/rewrite-script — 异步改写剧本（立即返回，前端轮询状态）
+// 长剧本改写耗时可达数分钟，同步等待会踩前端/上游两侧超时（详见 services/script-rewrite.ts）
+app.post('/:id/rewrite-script', async (c) => {
+  const id = Number(c.req.param('id'))
+  const body = await c.req.json().catch(() => ({}))
+  const [ep] = await db.select().from(schema.episodes).where(eq(schema.episodes.id, id))
+  if (!ep) return notFound(c, '剧集不存在')
+  const started = startScriptRewrite(ep.id, ep.dramaId, { model: body.model || undefined, configId: body.config_id ?? undefined })
+  return success(c, { status: 'running', already_running: !started })
+})
+
+// GET /episodes/:id/rewrite-status — 查询改写任务状态
+app.get('/:id/rewrite-status', async (c) => {
+  const id = Number(c.req.param('id'))
+  return success(c, getScriptRewriteStatus(id))
+})
+
+// POST /episodes/:id/breakdown-storyboards — 异步拆解分镜（立即返回，前端轮询状态）
+// 拆解 = 一次产出整集分镜（分批保存），长耗时，同步等待会踩两侧超时（详见 services/storyboard-breakdown.ts）
+app.post('/:id/breakdown-storyboards', async (c) => {
+  const id = Number(c.req.param('id'))
+  const body = await c.req.json().catch(() => ({}))
+  const [ep] = await db.select().from(schema.episodes).where(eq(schema.episodes.id, id))
+  if (!ep) return notFound(c, '剧集不存在')
+  const started = startStoryboardBreakdown(ep.id, ep.dramaId, {
+    model: body.model || undefined,
+    configId: body.config_id ?? undefined,
+    videoModelLabel: typeof body.video_model_label === 'string' ? body.video_model_label : undefined,
+  })
+  return success(c, { status: 'running', already_running: !started })
+})
+
+// GET /episodes/:id/breakdown-status — 查询拆解任务状态
+app.get('/:id/breakdown-status', async (c) => {
+  const id = Number(c.req.param('id'))
+  return success(c, getStoryboardBreakdownStatus(id))
 })
 
 // POST /episodes/:id/generate-video-prompts — 异步批量为缺少视频提示词的分镜生成（立即返回，前端轮询状态）

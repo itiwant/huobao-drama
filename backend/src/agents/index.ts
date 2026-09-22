@@ -9,7 +9,7 @@ import type { RequestContext } from '@mastra/core/request-context'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
 import { getTextConfig, getTextProviderBaseUrl, getConfigById } from '../services/ai.js'
-import { logTaskProgress } from '../utils/task-logger.js'
+import { describeError, logTaskError, logTaskProgress, redactUrl } from '../utils/task-logger.js'
 import { scriptTools } from './tools/script-tools.js'
 import { extractTools } from './tools/extract-tools.js'
 import { storyboardTools } from './tools/storyboard-tools.js'
@@ -285,6 +285,71 @@ function createMaxTokensFetch(providerName: string, inner?: typeof fetch): typeo
   }
 }
 
+/**
+ * 模型请求日志层（最内层）
+ *
+ * 改写/提取这类非流式调用，客户端一次 HTTP 请求要等模型把整段内容生成完。
+ * Node 内置 fetch(undici) 对「响应头未到达」设了 300s 硬超时（UND_ERR_HEADERS_TIMEOUT），
+ * 超时后抛出的 TypeError 只有一句 "fetch failed"，真正原因在 cause 里。
+ * 这里记录每次上游请求的耗时与失败原因，用来区分：
+ * - 300s 左右失败 + UND_ERR_HEADERS_TIMEOUT → 上游生成太慢被 undici 掐断
+ * - 立即失败 + ECONNREFUSED/401 → 配置或鉴权问题
+ */
+function createModelCallLogFetch(providerName: string, modelName: string, inner?: typeof fetch): typeof fetch {
+  const base = inner || fetch
+  let seq = 0
+  return async (input: any, init?: any) => {
+    const id = ++seq
+    const url = typeof input === 'string' ? input : input?.url || String(input)
+    const started = performance.now()
+    let bodySummary: Record<string, unknown> = {}
+    try {
+      if (init?.body && typeof init.body === 'string') {
+        const body = JSON.parse(init.body)
+        bodySummary = {
+          stream: body.stream ?? false,
+          messages: Array.isArray(body.messages) ? body.messages.length : undefined,
+          tools: Array.isArray(body.tools) ? body.tools.length : undefined,
+          max_tokens: body.max_tokens,
+        }
+      }
+    } catch { /* 非 JSON 请求体（multipart 等）不打摘要 */ }
+
+    logTaskProgress('AIModel', 'request', {
+      id,
+      provider: providerName,
+      model: modelName,
+      url: redactUrl(url),
+      ...bodySummary,
+    })
+
+    try {
+      const resp = await base(input, init)
+      logTaskProgress('AIModel', 'response-headers', {
+        id,
+        status: resp.status,
+        elapsedSeconds: ((performance.now() - started) / 1000).toFixed(1),
+      })
+      return resp
+    } catch (err: any) {
+      const info = describeError(err)
+      logTaskError('AIModel', 'request-failed', {
+        id,
+        provider: providerName,
+        model: modelName,
+        elapsedSeconds: ((performance.now() - started) / 1000).toFixed(1),
+        code: info.code,
+        error: info.message,
+      })
+      logTaskError('AIModel', 'request-failed cause-chain', {
+        id,
+        chain: info.causeChain.join(' <- '),
+      })
+      throw err
+    }
+  }
+}
+
 async function getModel(fileModel: string | undefined, modelOverride?: string, textConfigId?: number) {
   // 请求可指定文本配置（含其 provider/baseUrl/apiKey），否则回退到当前启用配置
   const textConfig = (textConfigId ? await getConfigById(textConfigId) : null) || await getTextConfig()
@@ -304,13 +369,15 @@ async function getModel(fileModel: string | undefined, modelOverride?: string, t
   }
 
   // 叠加请求补丁：thinking-off（非官方端点）+ 配置温度 + 输出上限（非官方 OpenAI）
+  // 最外层再包一层日志，记录每次上游请求的耗时与失败原因（超时/鉴权/连接）
   const thinkingOffFetch = createThinkingOffFetch(providerName, resolvedBaseURL)
   const tempFetch = temperature !== null
     ? createTemperatureFetch(providerName, temperature, thinkingOffFetch)
     : thinkingOffFetch
-  const fetchImpl = isOfficialOpenAIHost(resolvedBaseURL)
+  const maxTokensFetch = isOfficialOpenAIHost(resolvedBaseURL)
     ? tempFetch
     : createMaxTokensFetch(providerName, tempFetch)
+  const fetchImpl = createModelCallLogFetch(providerName, modelName, maxTokensFetch)
 
   if (providerName === 'gemini') {
     const googleProvider = createGoogleGenerativeAI({

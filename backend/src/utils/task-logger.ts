@@ -109,6 +109,37 @@ function truncateString(value: string, edge = 120) {
   return `${value.slice(0, edge)}...<trimmed ${value.length} chars>...${value.slice(-edge)}`
 }
 
+/**
+ * 展开 Error.cause 链
+ *
+ * 背景：AI 调用失败的最内层原因几乎总被埋在 cause 里而顶层 message 毫无信息量——
+ * Node fetch 超时表现为 `TypeError: fetch failed` + `cause: UND_ERR_HEADERS_TIMEOUT`，
+ * AI SDK 再包一层 APICallError，Mastra 又包一层 MastraError。
+ * 只打 err.message 会得到一句「Agent 执行失败」，完全看不出是超时还是鉴权失败。
+ */
+export function describeError(err: any): { message: string; name?: string; code?: string; causeChain: string[] } {
+  const causeChain: string[] = []
+  let current: any = err
+  let depth = 0
+  while (current && depth < 8) {
+    const name = current.name || current.constructor?.name
+    const code = current.code || current.cause?.code
+    const parts = [name, current.message].filter(Boolean).join(': ')
+    causeChain.push(code && !parts.includes(String(code)) ? `${parts} (code=${code})` : parts)
+    if (current.cause === current) break
+    current = current.cause
+    depth++
+  }
+  // 最内层通常是真正的原因（UND_ERR_HEADERS_TIMEOUT / ECONNRESET / 401 等）
+  const root: any = current || err
+  return {
+    message: err?.message || String(err),
+    name: err?.name || err?.constructor?.name,
+    code: root?.code || err?.code,
+    causeChain,
+  }
+}
+
 export function logTask(scope: string, action: string, meta?: Record<string, unknown>, level: LogLevel = 'INFO') {
   const color = colorFor(level)
   console.log(`${C.dim}${timeText()}${C.reset} ${color}[${scope}]${C.reset} ${action}${formatMeta(meta)}`)

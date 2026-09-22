@@ -208,7 +208,7 @@ async function processTask(id: number, config: AIConfig) {
     if (type === 'image') {
       const adapter = getImageAdapter(config.provider)
       const resolvedReferenceImages = await normalizeReferenceImages(params.referenceImages)
-      ;({ url, method, headers, body } = adapter.buildGenerateRequest(config, {
+      ;({ url, method, headers, body } = await adapter.buildGenerateRequest(config, {
         id: record.id,
         model: record.model,
         prompt: record.prompt,
@@ -226,7 +226,7 @@ async function processTask(id: number, config: AIConfig) {
       const resolvedReferenceVideoUrls = resolvePublicMediaUrls(params.referenceVideoUrls, 'video')
       const resolvedReferenceAudioUrls = resolvePublicMediaUrls(params.referenceAudioUrls, 'audio')
       const resolvedReferenceFileUrl = resolvePublicMediaUrl(params.referenceFileUrl, 'file')
-      ;({ url, method, headers, body } = adapter.buildGenerateRequest(config, {
+      ;({ url, method, headers, body } = await adapter.buildGenerateRequest(config, {
         id: record.id,
         model: record.model,
         prompt: record.prompt,

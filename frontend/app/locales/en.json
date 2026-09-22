@@ -440,6 +440,65 @@
     "skillDelete": {
       "title": "Delete Skill",
       "message": "Delete skill “{id}”? The corresponding Agent will fall back to its built-in default prompt."
+    },
+    "stylePresetNames": {
+      "3d": {
+        "name": "3D Anime",
+        "description": "Game-engine grade 3D render with semi-realistic characters — the mainstream 3D donghua look"
+      },
+      "anime": {
+        "name": "Anime Cel",
+        "description": "Japanese cel-shaded animation style"
+      },
+      "ghibli": {
+        "name": "Ghibli Hand-drawn",
+        "description": "Hand-drawn Ghibli healing style"
+      },
+      "watercolor": {
+        "name": "Watercolor",
+        "description": "Watercolor illustration texture"
+      },
+      "comic": {
+        "name": "American Comic",
+        "description": "Bold-line American comic style"
+      },
+      "guofeng": {
+        "name": "Guofeng 2.5D",
+        "description": "Chinese-style animation / xianxia look, 2.5D semi-realistic"
+      },
+      "webtoon": {
+        "name": "Korean Webtoon",
+        "description": "Refined Korean webtoon coloring style"
+      },
+      "noir": {
+        "name": "B&W Manga",
+        "description": "Black-and-white manga / noir high-contrast ink style"
+      }
+    },
+    "providerPresets": {
+      "gemini": {
+        "label": "Gemini Official"
+      },
+      "openai": {
+        "label": "OpenAI Official"
+      },
+      "volcengine": {
+        "label": "Seedance 2.0 Official"
+      },
+      "minimax": {
+        "label": "MiniMax H3 Official"
+      },
+      "aliyun": {
+        "label": "Alibaba Bailian Wan 3.0"
+      },
+      "kie": {
+        "label": "Kie.ai"
+      }
+    },
+    "huobaoService": {
+      "text": "Huobao Text Service",
+      "image": "Huobao Image Service",
+      "video": "Huobao Video Service"
     }
   },
   "episode": {
@@ -497,6 +556,10 @@
       "emptyDesc": "Use AI to organize the raw content into a formatted script, or skip this step and go straight to asset production.",
       "startRewrite": "Start Rewrite",
       "rewriting": "Rewriting the script...",
+      "stageReading": "Reading the source text...",
+      "stageSaving": "Saving the rewritten script...",
+      "rewriteDone": "Rewrite complete, {n} characters",
+      "rewriteFailed": "Rewrite failed, please try again",
       "scriptPlaceholder": "Formatted script content...",
       "rawRequired": "Please fill in the raw content first",
       "skipDone": "AI rewrite skipped; the raw content will be used directly"
@@ -671,6 +734,10 @@
       "videoPromptCopy": "Generated from this shot's visual description (including dialogue/narration) and atmosphere",
       "videoPromptPlaceholder": "Reference assets with {'@'}character / {'@'}scene, describe motion and camera per 3-second line; or click AI Generate for the prompt Agent…",
       "breaking": "Breaking the storyboard...",
+      "stageReading": "Reading the script and assets...",
+      "stageSaving": "Saving storyboards...",
+      "breakDone": "Breakdown complete, {n} shots",
+      "breakFailed": "Breakdown failed, please try again",
       "emptyTitle": "Start Storyboard Breakdown",
       "emptyDesc": "Break the script into shots based on the script, characters and scenes, producing shot descriptions and bindings.",
       "hasVideo": "Video generated",

@@ -440,6 +440,65 @@
     "skillDelete": {
       "title": "Skill 삭제",
       "message": "Skill 「{id}」을(를) 삭제하시겠습니까? 해당 Agent는 기본 제공 프롬프트로 돌아갑니다."
+    },
+    "stylePresetNames": {
+      "3d": {
+        "name": "3D 애니",
+        "description": "게임 엔진급 3D 렌더링, 세미리얼리스틱 캐릭터, 현재 주류 3D 애니 질감"
+      },
+      "anime": {
+        "name": "일본 셀 애니",
+        "description": "일본식 셀 셰이딩 애니메이션 스타일"
+      },
+      "ghibli": {
+        "name": "지브리 수작업",
+        "description": "지브리풍 수작업 힐링 스타일"
+      },
+      "watercolor": {
+        "name": "수채화 그림책",
+        "description": "수채화 일러스트 질감"
+      },
+      "comic": {
+        "name": "미국 만화",
+        "description": "미국 만화 굵은 선 스타일"
+      },
+      "guofeng": {
+        "name": "중국풍 2.5D",
+        "description": "중국풍 애니/선협 드라마 질감, 2.5D 세미리얼리스틱"
+      },
+      "webtoon": {
+        "name": "한국 웹툰",
+        "description": "한국 웹툰의 정교한 채색 스타일"
+      },
+      "noir": {
+        "name": "흑백 만화",
+        "description": "흑백 만화/누아르 고대비 잉크 스타일"
+      }
+    },
+    "providerPresets": {
+      "gemini": {
+        "label": "Gemini 공식"
+      },
+      "openai": {
+        "label": "OpenAI 공식"
+      },
+      "volcengine": {
+        "label": "Seedance 2.0 공식"
+      },
+      "minimax": {
+        "label": "MiniMax H3 공식"
+      },
+      "aliyun": {
+        "label": "Alibaba Bailian Wan 3.0"
+      },
+      "kie": {
+        "label": "Kie.ai"
+      }
+    },
+    "huobaoService": {
+      "text": "Huobao 텍스트 서비스",
+      "image": "Huobao 이미지 서비스",
+      "video": "Huobao 비디오 서비스"
     }
   },
   "episode": {
@@ -497,6 +556,10 @@
       "emptyDesc": "AI로 원문을 형식화된 대본으로 정리하거나, 이 단계를 건거이서 에셋 제작으로 바로 진행할 수 있습니다.",
       "startRewrite": "재작성 시작",
       "rewriting": "대본을 재작성하는 중...",
+      "stageReading": "원문을 읽는 중...",
+      "stageSaving": "재작성 결과를 저장하는 중...",
+      "rewriteDone": "재작성 완료, {n}자",
+      "rewriteFailed": "재작성에 실패했습니다. 다시 시도해 주세요",
       "scriptPlaceholder": "형식화된 대본 내용...",
       "rawRequired": "먼저 원문을 입력하세요",
       "skipDone": "AI 재작성을 건거이습니다. 원문을 그대로 사용합니다"
@@ -671,6 +734,10 @@
       "videoPromptCopy": "이 스토리보드의 화면 설명(대사/나레이션 포함)과 분위기를 바탕으로 생성",
       "videoPromptPlaceholder": "{'@'}캐릭터명 / {'@'}장멸명 으로 참조 소재를 지정하고, 3초마다 줄 바꿈하여 화면의 움직임과 침라를 기술. AI로 생성해 프롬프트 Agent에 맡길 수도 있습니다…",
       "breaking": "스토리보드 분해 중...",
+      "stageReading": "대본과 에셋을 읽는 중...",
+      "stageSaving": "스토리보드를 저장하는 중...",
+      "breakDone": "스토리보드 분해 완료, 총 {n}컷",
+      "breakFailed": "스토리보드 분해에 실패했습니다. 다시 시도해 주세요",
       "emptyTitle": "스토리보드 분해 시작",
       "emptyDesc": "대본, 캐릭터, 장면을 바탕으로 샷으로 분해하여 스토리보드 설명과 연결 정보를 생성합니다.",
       "hasVideo": "영상 생성됨",

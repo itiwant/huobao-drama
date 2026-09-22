@@ -22,6 +22,7 @@ const FILENAMES: Record<string, string> = {
   ollama: 'ollama.png',
   midjourney: 'midjourney.png',
 }
+// kie 无本地图标资源：providerIconUrl 返回 undefined，调用方回退字母徽标（既有行为）
 
 /** provider → 当前主题下的图标 URL；未知厂商返回 undefined（调用方回退字母徽标） */
 export function providerIconUrl(provider?: string | null): string | undefined {

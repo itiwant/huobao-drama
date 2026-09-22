@@ -99,7 +99,7 @@
               </button>
             </div>
             <div class="huobao-quick-models">
-              <div v-for="q in huobaoQuickConfigs" :key="q.name" class="hqm-row">
+              <div v-for="q in huobaoQuickConfigs" :key="`${q.service_type}-${q.provider}`" class="hqm-row">
                 <span class="hqm-label">{{ serviceMeta[q.service_type].label }}</span>
                 <span class="hqm-provider">
                   <img v-if="providerIconUrl(q.provider)" :src="providerIconUrl(q.provider)" class="hqm-provider-icon" alt="" />
@@ -196,12 +196,12 @@
               <div class="provider-badge style-badge"><Palette :size="15" /></div>
               <div class="config-main">
                 <div class="config-line">
-                  <span class="config-name">{{ p.name }}</span>
+                  <span class="config-name">{{ styleName(p) }}</span>
                   <span class="tag mono">{{ p.value }}</span>
                   <span v-if="!p.is_active" class="tag">{{ t('settings.common.disabled') }}</span>
                 </div>
                 <div class="config-sub mono truncate">{{ p.prompt }}</div>
-                <div v-if="p.description" class="config-sub truncate">{{ p.description }}</div>
+                <div v-if="styleDescription(p)" class="config-sub truncate">{{ styleDescription(p) }}</div>
               </div>
               <label class="config-switch">
                 <input type="checkbox" class="sr-only" :checked="p.is_active" @change="toggleStyle(p)">
@@ -490,7 +490,7 @@
               class="preset-pill"
               @click="applyProviderPreset(cfgForm.service_type, preset.provider)"
             >
-              {{ preset.label }}
+              {{ presetLabel(preset.provider) }}
             </button>
           </div>
           <label class="field">
@@ -498,7 +498,13 @@
             <input v-model="cfgForm.name" class="input" :placeholder="t('settings.cfg.namePlaceholder')" />
           </label>
           <label class="field"><span class="field-label">{{ t('settings.cfg.provider') }}</span>
-            <BaseSelect v-model="cfgForm.provider" :options="providerSelectOptions" :placeholder="t('settings.cfg.providerPlaceholder')" searchable />
+            <BaseSelect
+              :model-value="cfgForm.provider"
+              :options="providerSelectOptions"
+              :placeholder="t('settings.cfg.providerPlaceholder')"
+              searchable
+              @update:model-value="onProviderChange"
+            />
           </label>
           <label class="field">
             <span class="field-label">{{ t('settings.cfg.priority') }}</span>
@@ -633,7 +639,7 @@
     <ConfirmDialog
       :open="!!styleToDelete"
       :title="t('settings.styleDelete.title')"
-      :message="t('settings.styleDelete.message', { name: styleToDelete?.name })"
+      :message="t('settings.styleDelete.message', { name: styleName(styleToDelete) })"
       :loading="deletingStyle"
       @confirm="confirmDelStyle"
       @cancel="styleToDelete = null"
@@ -662,8 +668,10 @@ import { useTheme } from '~/composables/useTheme'
 import { providerIconUrl } from '~/composables/useProviderIcon'
 import { startTour, autoTour } from '~/composables/useTour'
 import { confirmUnifiedLanguage } from '~/composables/useUnifiedLanguage'
+import { useStylePresetLabel } from '~/composables/useStylePresetLabel'
 
-const { t } = useI18n()
+const { t, te } = useI18n()
+const { styleName, styleDescription, styleNameIfSeed, styleDescriptionIfSeed } = useStylePresetLabel()
 
 const showBrandImage = ref(true)
 const tab = ref('ai')
@@ -685,43 +693,74 @@ const cfgTestResult = ref(null)
 const huobaoApiKey = ref('')
 const huobaoSaving = ref(false)
 const cfgForm = reactive({ name: '', provider: '', api_key: '', base_url: '', modelStr: '', service_type: 'text', priority: 0, temperature: '' })
+/** 上一次由预设自动生成的配置名；用于判断 name 是否被用户改过 */
+const cfgAutoName = ref('')
 // 服务类型 label/desc 渲染时求值（语言切换即时生效），type 为逻辑值
 const serviceTypes = computed(() => [
   { type: 'text', label: t('common.serviceType.text') },
   { type: 'image', label: t('common.serviceType.image') },
   { type: 'video', label: t('common.serviceType.video') },
 ])
-const providers = ['gemini', 'openai', 'volcengine', 'minimax', 'aliyun']
-const providerSelectOptions = computed(() => providers.map(p => ({ label: p, value: p })))
+const providers = ['gemini', 'openai', 'volcengine', 'minimax', 'aliyun', 'kie']
+// 各服务类型允许的厂商 —— 与后端 ai.ts 的 officialProviders 白名单保持一致。
+// 之前下拉列出全部厂商，选到不属于该类型的会被后端拒绝保存。
+const providersByServiceType = {
+  text: ['gemini', 'openai', 'volcengine'],
+  image: ['gemini', 'openai', 'volcengine', 'kie'],
+  video: ['volcengine', 'minimax', 'aliyun', 'kie'],
+}
+const providerSelectOptions = computed(() =>
+  (providersByServiceType[cfgForm.service_type] || providers).map(p => ({ label: p, value: p })))
 const serviceMeta = computed(() => ({
   text: { label: t('common.serviceType.text'), desc: t('settings.ai.meta.text') },
   image: { label: t('common.serviceType.image'), desc: t('settings.ai.meta.image') },
   video: { label: t('common.serviceType.video'), desc: t('settings.ai.meta.video') },
 }))
+// 模板的 label 仅用于界面显示（随语言翻译）；name 是写入 DB 的配置名，
+// 固定用英文/厂商原名，避免切换语言后同一条配置改名。
 const providerPresets = {
   text: {
-    gemini: { label: 'Gemini 官方', baseUrl: 'https://generativelanguage.googleapis.com', models: ['gemini-3.1-pro-preview', 'gemini-3.5-flash', 'gemini-3-flash-preview'] },
-    openai: { label: 'OpenAI 官方', baseUrl: 'https://api.openai.com', models: ['deepseek-v4-pro', 'gpt-5.6-terra'] },
+    gemini: { name: 'Gemini', baseUrl: 'https://generativelanguage.googleapis.com', models: ['gemini-3.1-pro-preview', 'gemini-3.5-flash', 'gemini-3-flash-preview'] },
+    openai: { name: 'OpenAI', baseUrl: 'https://api.openai.com', models: ['deepseek-v4-pro', 'gpt-5.6-terra'] },
   },
   image: {
-    gemini: { label: 'Gemini 官方', baseUrl: 'https://generativelanguage.googleapis.com', models: ['gemini-3-pro-image', 'gemini-3.1-flash-image'] },
-    openai: { label: 'OpenAI 官方', baseUrl: 'https://api.openai.com', models: ['gpt-image-2'] },
+    gemini: { name: 'Gemini', baseUrl: 'https://generativelanguage.googleapis.com', models: ['gemini-3-pro-image', 'gemini-3.1-flash-image'] },
+    openai: { name: 'OpenAI', baseUrl: 'https://api.openai.com', models: ['gpt-image-2'] },
+    kie: { name: 'Kie.ai', baseUrl: 'https://api.kie.ai', models: ['nano-banana-2', 'nano-banana-pro', 'nano-banana-2-lite', 'google-nano-banana', 'seedream-5-pro', 'seedream-5-lite', 'gpt-image-2', 'gpt-image-2-5-flare', 'gpt-image-2-5-sunburst', 'grok-imagine-image', 'z-image'] },
   },
   video: {
-    volcengine: { label: 'Seedance 2.0 官方', baseUrl: 'https://ark.cn-beijing.volces.com', models: ['doubao-seedance-2-0-mini-260615', 'doubao-seedance-2-0-fast-260128', 'doubao-seedance-2-0-260128'] },
-    minimax: { label: 'MiniMax H3 官方', baseUrl: 'https://api.minimaxi.com', models: ['MiniMax-H3'] },
-    aliyun: { label: '阿里云百炼 Wan 3.0', baseUrl: 'https://{WorkspaceId}.cn-beijing.maas.aliyuncs.com', models: ['wan3.0-video-prime', 'wan3.0-video'] },
+    volcengine: { name: 'Seedance 2.0', baseUrl: 'https://ark.cn-beijing.volces.com', models: ['doubao-seedance-2-0-mini-260615', 'doubao-seedance-2-0-fast-260128', 'doubao-seedance-2-0-260128'] },
+    minimax: { name: 'MiniMax H3', baseUrl: 'https://api.minimaxi.com', models: ['MiniMax-H3'] },
+    aliyun: { name: 'Alibaba Bailian Wan 3.0', baseUrl: 'https://{WorkspaceId}.cn-beijing.maas.aliyuncs.com', models: ['wan3.0-video-prime', 'wan3.0-video'] },
+    kie: { name: 'Kie.ai', baseUrl: 'https://api.kie.ai', models: ['kling-3.0', 'kling-3.0-turbo', 'seedance-2', 'seedance-2-fast', 'seedance-2-mini', 'seedance-2-5', 'grok-imagine', 'grok-imagine-1-5-preview', 'minimax-h3', 'happyhorse'] },
   },
 }
+
+/** 模板按钮的显示文案：优先 i18n，缺翻译回退厂商原名（跨全部服务类型查找） */
+function presetLabel(provider) {
+  const key = `settings.providerPresets.${provider}.label`
+  if (te(key)) return t(key)
+  for (const group of Object.values(providerPresets)) {
+    if (group[provider]?.name) return group[provider].name
+  }
+  return provider
+}
+// 快捷配置的服务名前缀随界面语言生成（写入 DB 的 name 会按当时语言落库，
+// 但匹配既有配置时用 provider+base_url，不受语言影响）
 const huobaoQuickConfigs = [
-  { service_type: 'text', provider: 'gemini', name: '火宝文本服务 · Gemini', base_url: 'https://api.firemux.com', model: ['gemini-3.1-pro-preview', 'gemini-3.5-flash', 'gemini-3-flash-preview'], priority: 100 },
-  { service_type: 'text', provider: 'openai', name: '火宝文本服务 · OpenAI', base_url: 'https://api.firemux.com', model: ['deepseek-v4-pro', 'deepseek-v4-flash', 'gpt-5.6-terra'], priority: 101 },
-  { service_type: 'image', provider: 'openai', name: '火宝图片服务 · OpenAI', base_url: 'https://api.firemux.com', model: ['gpt-image-2'], priority: 99 },
-  { service_type: 'image', provider: 'gemini', name: '火宝图片服务 · Gemini', base_url: 'https://api.firemux.com', model: ['gemini-3-pro-image', 'gemini-3.1-flash-image'], priority: 97 },
-  { service_type: 'video', provider: 'volcengine', name: '火宝视频服务 · Seedance', base_url: 'https://api.firemux.com/volcengine', model: ['doubao-seedance-2-0-mini-260615', 'doubao-seedance-2-0-fast-260128', 'doubao-seedance-2-0-260128'], priority: 98 },
-  { service_type: 'video', provider: 'aliyun', name: '火宝视频服务 · Wan 3.0', base_url: 'https://api.firemux.com/qwen', model: ['wan3.0-video-prime', 'wan3.0-video'], priority: 97 },
-  { service_type: 'video', provider: 'minimax', name: '火宝视频服务 · MiniMax', base_url: 'https://api.firemux.com/minimax', model: ['MiniMax-H3'], priority: 96 },
+  { service_type: 'text', provider: 'gemini', suffix: 'Gemini', base_url: 'https://api.firemux.com', model: ['gemini-3.1-pro-preview', 'gemini-3.5-flash', 'gemini-3-flash-preview'], priority: 100 },
+  { service_type: 'text', provider: 'openai', suffix: 'OpenAI', base_url: 'https://api.firemux.com', model: ['deepseek-v4-pro', 'deepseek-v4-flash', 'gpt-5.6-terra'], priority: 101 },
+  { service_type: 'image', provider: 'openai', suffix: 'OpenAI', base_url: 'https://api.firemux.com', model: ['gpt-image-2'], priority: 99 },
+  { service_type: 'image', provider: 'gemini', suffix: 'Gemini', base_url: 'https://api.firemux.com', model: ['gemini-3-pro-image', 'gemini-3.1-flash-image'], priority: 97 },
+  { service_type: 'video', provider: 'volcengine', suffix: 'Seedance', base_url: 'https://api.firemux.com/volcengine', model: ['doubao-seedance-2-0-mini-260615', 'doubao-seedance-2-0-fast-260128', 'doubao-seedance-2-0-260128'], priority: 98 },
+  { service_type: 'video', provider: 'aliyun', suffix: 'Wan 3.0', base_url: 'https://api.firemux.com/qwen', model: ['wan3.0-video-prime', 'wan3.0-video'], priority: 97 },
+  { service_type: 'video', provider: 'minimax', suffix: 'MiniMax', base_url: 'https://api.firemux.com/minimax', model: ['MiniMax-H3'], priority: 96 },
 ]
+
+/** 快捷配置写入 DB 的显示名：服务前缀随语言，后缀固定为厂商名 */
+function quickConfigName(cfg) {
+  return `${t(`settings.huobaoService.${cfg.service_type}`)} · ${cfg.suffix}`
+}
 
 function byType(t) { return cfgs.value.filter(c => c.service_type === t) }
 function countActive(t) { return byType(t).filter(c => c.is_active).length }
@@ -737,7 +776,27 @@ function applyProviderPreset(type, provider) {
   cfgForm.base_url = preset.baseUrl
   cfgForm.modelStr = preset.models.join(', ')
   // 配置名持久化进 DB：用 provider 英文 + 服务类型英文标识拼，不随界面语言漂移
-  cfgForm.name = `${preset.label}-${type}`
+  cfgAutoName.value = `${preset.name}-${type}`
+  cfgForm.name = cfgAutoName.value
+}
+
+/**
+ * 下拉框切换厂商时同步带出该厂商的默认 Base URL 与模型。
+ * 配置名仅在「仍是自动生成的值、用户没动过」时跟着改，
+ * 避免出现 provider=kie 却叫 Gemini-image 的错配；
+ * 用户手填过的名字一律保留。
+ */
+function onProviderChange(provider) {
+  if (!provider) { cfgForm.provider = ''; return }
+  const preset = providerPresets[cfgForm.service_type]?.[provider]
+  cfgForm.provider = provider
+  if (!preset) return
+  cfgForm.base_url = preset.baseUrl
+  cfgForm.modelStr = preset.models.join(', ')
+  if (!cfgForm.name || cfgForm.name === cfgAutoName.value) {
+    cfgAutoName.value = `${preset.name}-${cfgForm.service_type}`
+    cfgForm.name = cfgAutoName.value
+  }
 }
 
 async function loadCfgs() { try { cfgs.value = await aiConfigAPI.list() } catch (e) { toastError(e) } }
@@ -782,8 +841,11 @@ async function applyHuobaoQuickConfig() {
   huobaoSaving.value = true
   try {
     for (const preset of huobaoQuickConfigs) {
-      const payload = { ...preset, api_key: apiKey }
-      const existing = cfgs.value.find(c => c.name === preset.name || (c.service_type === preset.service_type && c.provider === preset.provider && c.base_url === preset.base_url))
+      const { suffix, ...rest } = preset
+      const payload = { ...rest, name: quickConfigName(preset), api_key: apiKey }
+      // 匹配既有配置按 service_type+provider+base_url，不依赖 name（name 随语言变化）
+      const existing = cfgs.value.find(c =>
+        c.service_type === preset.service_type && c.provider === preset.provider && c.base_url === preset.base_url)
       if (existing) await aiConfigAPI.update(existing.id, payload)
       else await aiConfigAPI.create(payload)
     }
@@ -799,6 +861,7 @@ async function applyHuobaoQuickConfig() {
 function startAddCfg(t) {
   cfgEditId.value = null
   cfgTestResult.value = null
+  cfgAutoName.value = ''
   Object.assign(cfgForm, { name: '', provider: '', api_key: '', base_url: '', modelStr: '', service_type: t, priority: 0, temperature: '' })
   const firstPreset = presetsByType(t)[0]
   if (firstPreset) applyProviderPreset(t, firstPreset.provider)
@@ -807,6 +870,8 @@ function startAddCfg(t) {
 function startEditCfg(c) {
   cfgEditId.value = c.id
   cfgTestResult.value = null
+  // 编辑模式不参与自动改名：清空基线即视为「用户数据」
+  cfgAutoName.value = ''
   Object.assign(cfgForm, {
     name: c.name || '',
     provider: c.provider,
@@ -1132,10 +1197,12 @@ function startAddStyle() {
 function startEditStyle(p) {
   styleEditId.value = p.id
   Object.assign(styleForm, {
-    name: p.name,
+    // DB 仍是种子原文时填当前语言的译文（否则表单里会出现中文）；
+    // 用户改过名则原样填回，避免译文盖掉用户输入。
+    name: styleNameIfSeed(p),
     value: p.value,
     prompt: p.prompt,
-    description: p.description || '',
+    description: styleDescriptionIfSeed(p),
     sort_order: p.sort_order ?? 0,
   })
   styleDialog.value = true
@@ -1148,10 +1215,14 @@ async function saveStyle() {
   }
   try {
     if (styleEditId.value) {
+      const original = stylePresets.value.find(p => p.id === styleEditId.value)
       await stylePresetAPI.update(styleEditId.value, {
-        name: styleForm.name,
+        // 用户没动过名称/描述时写回 DB 原文，避免把当次界面语言的译文固化成数据
+        name: styleForm.name === styleNameIfSeed(original) ? (original?.name ?? styleForm.name) : styleForm.name,
         prompt: styleForm.prompt,
-        description: styleForm.description,
+        description: styleForm.description === styleDescriptionIfSeed(original)
+          ? (original?.description ?? styleForm.description)
+          : styleForm.description,
         sort_order: styleForm.sort_order,
       })
     } else {
@@ -1404,7 +1475,10 @@ onBeforeUnmount(stopUsagePoll)
 }
 .hqm-label {
   flex-shrink: 0;
-  width: 28px;
+  /* 原为固定 28px，仅够中文「文本」两字；拉丁语言（Văn bản / Video / Text）会被挤成两行。
+     改用统一基准宽 + nowrap：各语言标签左对齐，provider 列也随之对齐。 */
+  width: 68px;
+  white-space: nowrap;
   font-weight: 600;
   color: var(--text-2);
 }

@@ -440,6 +440,65 @@
     "skillDelete": {
       "title": "Xoá kỹ năng",
       "message": "Xoá kỹ năng “{id}”? Agent tương ứng sẽ quay về prompt mặc định có sẵn."
+    },
+    "stylePresetNames": {
+      "3d": {
+        "name": "Hoạt hình 3D",
+        "description": "Kết xuất 3D chuẩn game engine, nhân vật bán thực tế, chất liệu hoạt hình 3D phổ biến hiện nay"
+      },
+      "anime": {
+        "name": "Anime Cel-shading",
+        "description": "Phong cách hoạt hình cel-shading Nhật Bản"
+      },
+      "ghibli": {
+        "name": "Ghibli vẽ tay",
+        "description": "Phong cách chữa lành vẽ tay kiểu Ghibli"
+      },
+      "watercolor": {
+        "name": "Tranh màu nước",
+        "description": "Chất liệu minh hoạ màu nước"
+      },
+      "comic": {
+        "name": "Truyện tranh Mỹ",
+        "description": "Phong cách truyện tranh Mỹ nét đậm"
+      },
+      "guofeng": {
+        "name": "Quốc phong 2.5D",
+        "description": "Chất liệu hoạt hình quốc phong / tiên hiệp, bán thực tế 2.5D"
+      },
+      "webtoon": {
+        "name": "Webtoon Hàn Quốc",
+        "description": "Phong cách webtoon Hàn Quốc, tô màu tinh xảo"
+      },
+      "noir": {
+        "name": "Truyện tranh đen trắng",
+        "description": "Truyện tranh đen trắng / noir, mực tương phản cao"
+      }
+    },
+    "providerPresets": {
+      "gemini": {
+        "label": "Gemini chính thức"
+      },
+      "openai": {
+        "label": "OpenAI chính thức"
+      },
+      "volcengine": {
+        "label": "Seedance 2.0 chính thức"
+      },
+      "minimax": {
+        "label": "MiniMax H3 chính thức"
+      },
+      "aliyun": {
+        "label": "Alibaba Bailian Wan 3.0"
+      },
+      "kie": {
+        "label": "Kie.ai"
+      }
+    },
+    "huobaoService": {
+      "text": "Dịch vụ văn bản Huobao",
+      "image": "Dịch vụ hình ảnh Huobao",
+      "video": "Dịch vụ video Huobao"
     }
   },
   "episode": {
@@ -497,6 +556,10 @@
       "emptyDesc": "Dùng AI sắp xếp nội dung gốc thành kịch bản chuẩn hoá, hoặc bỏ qua bước này và đi thẳng tới sản xuất tài sản.",
       "startRewrite": "Bắt đầu viết lại",
       "rewriting": "Đang viết lại kịch bản...",
+      "stageReading": "Đang đọc nội dung gốc...",
+      "stageSaving": "Đang lưu kết quả viết lại...",
+      "rewriteDone": "Viết lại xong, {n} ký tự",
+      "rewriteFailed": "Viết lại thất bại, vui lòng thử lại",
       "scriptPlaceholder": "Nội dung kịch bản đã chuẩn hoá...",
       "rawRequired": "Vui lòng điền nội dung gốc trước",
       "skipDone": "Đã bỏ qua bước AI viết lại; nội dung gốc sẽ được dùng trực tiếp"
@@ -671,6 +734,10 @@
       "videoPromptCopy": "Được tạo từ mô tả hình ảnh của cú máy này (kèm lời thoại/lời dẫn) và không khí",
       "videoPromptPlaceholder": "Tham chiếu tài sản bằng {'@'}nhân vật / {'@'}bối cảnh, mô tả chuyển động và máy quay theo từng dòng 3 giây; hoặc bấm AI tạo để Agent sinh prompt…",
       "breaking": "Đang chia phân cảnh...",
+      "stageReading": "Đang đọc kịch bản và tài sản...",
+      "stageSaving": "Đang lưu phân cảnh...",
+      "breakDone": "Chia phân cảnh xong, tổng {n} cú máy",
+      "breakFailed": "Chia phân cảnh thất bại, vui lòng thử lại",
       "emptyTitle": "Bắt đầu chia phân cảnh",
       "emptyDesc": "Chia kịch bản thành các cú máy dựa trên kịch bản, nhân vật và bối cảnh, tạo ra mô tả cú máy và các liên kết.",
       "hasVideo": "Đã tạo video",

@@ -6,7 +6,7 @@ import { validAgentTypes } from '../agents/index.js'
 import { buildAgentRequestContext } from '../agents/context.js'
 import { mastra } from '../mastra/index.js'
 import { success, badRequest } from '../utils/response.js'
-import { logTaskError, logTaskPayload, logTaskProgress, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
+import { describeError, logTaskError, logTaskPayload, logTaskProgress, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
 
 const app = new Hono()
 
@@ -65,10 +65,36 @@ app.post('/:type/chat', async (c) => {
 
   const startTime = performance.now()
 
+  // 心跳：单次 AI 调用可能长达数分钟（改写长剧本时尤其明显），
+  // 没有心跳就无法区分「模型仍在生成」和「请求已挂死」。
+  // 打点间隔同时也是判定 Node fetch 300s 头超时（UND_ERR_HEADERS_TIMEOUT）的时间依据。
+  const heartbeat = setInterval(() => {
+    logTaskProgress('Agent', 'waiting', {
+      agentType,
+      elapsedSeconds: ((performance.now() - startTime) / 1000).toFixed(0),
+    })
+  }, 15_000)
+  heartbeat.unref?.()
+
   try {
     const result = await agent.generate(
       [{ role: 'user', content: message }],
-      { maxSteps: 20, requestContext },
+      {
+        maxSteps: 20,
+        requestContext,
+        // 每步打印工具调用：可看出模型走到「读取」还是「保存」，
+        // 断开时能判断是首轮请求就超时，还是多轮循环中途失败
+        onStepFinish: (step: any) => {
+          const tools = (step?.toolCalls || [])
+            .map((t: any) => t?.toolName || t?.payload?.toolName)
+            .filter(Boolean)
+          logTaskProgress('Agent', `${agentType}-step`, {
+            elapsedSeconds: ((performance.now() - startTime) / 1000).toFixed(1),
+            tools: tools.length ? tools.join(',') : undefined,
+            text: (step?.text || '').slice(0, 200) || undefined,
+          })
+        },
+      },
     )
 
     const elapsed = ((performance.now() - startTime) / 1000).toFixed(1)
@@ -101,9 +127,21 @@ app.post('/:type/chat', async (c) => {
     })
   } catch (err: any) {
     const elapsed = ((performance.now() - startTime) / 1000).toFixed(1)
-    logTaskError('Agent', agentType, { elapsedSeconds: elapsed, error: err.message })
+    // 顶层 message 往往只是「Agent 执行失败」，真正原因在 cause 链最内层
+    const info = describeError(err)
+    logTaskError('Agent', agentType, {
+      elapsedSeconds: elapsed,
+      name: info.name,
+      error: info.message,
+      code: info.code,
+    })
+    logTaskError('Agent', `${agentType} cause-chain`, {
+      chain: info.causeChain.join(' <- '),
+    })
     console.error(err.stack || err)
     return badRequest(c, err.message || 'Agent 执行失败')
+  } finally {
+    clearInterval(heartbeat)
   }
 })
 
